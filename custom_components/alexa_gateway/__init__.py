@@ -187,6 +187,9 @@ def get_instance(interface, attributes):
     elif interface == "Alexa.RangeController":
         return "Counter.Number"
 
+    elif interface == "Alexa.InventoryLevelSensor":
+        return "Cascade Dishwasher Pods"
+
     else:
         return None
 
@@ -212,6 +215,11 @@ def get_capability(alexa_response, interface, attributes):
         capability = alexa_response.create_payload_endpoint_capability(
             interface=interface,
             proactively_reported=True)
+
+    elif interface in ["Alexa.SceneController"]:
+        capability = alexa_response.create_payload_endpoint_capability(
+            interface=interface,
+            supports_deactivation=True)
 
     elif interface in ["Alexa.LockController", "Alexa.BrightnessController", "Alexa.PowerController", "Alexa.TemperatureSensor", "Alexa.ColorController", "Alexa.ColorTemperatureController"]:
         capability = alexa_response.create_payload_endpoint_capability(
@@ -412,6 +420,18 @@ def get_capability(alexa_response, interface, attributes):
                 }
             ])
 
+    elif interface == "Alexa.InventoryLevelSensor":
+        capability = alexa_response.create_payload_endpoint_capability(
+            interface=interface,
+            instance=get_instance(interface, attributes),
+            retrievable=True,
+            proactively_reported=True,
+            supported=get_properties(interface),
+            capability_resources={"friendlyNames": [
+                {"@type": "text", "value": {"text": get_instance(interface, attributes), "locale": "en-US"}}]},
+            configuration_measurement={"@type": "Count"},
+            configuration_replenishment={"@type": "DashReplenishmentId", "value": "B07G28CM6P"})
+
     elif interface == "Alexa.EventDetectionSensor":
         capability = alexa_response.create_payload_endpoint_capability(
             interface=interface,
@@ -500,6 +520,12 @@ def get_properties(interface):
     elif interface == "Alexa.LockController":
         return [{"name": "lockState"}]
 
+    elif interface == "Alexa.SceneController":
+        return [{"name": "ActivationStarted"}]
+
+    elif interface == "Alexa.InventoryLevelSensor":
+        return [{"name": "Count"}]
+
     else:
         raise Exception(
             f"Supported Property not yet implemented for Interface: {interface}")
@@ -560,6 +586,12 @@ def get_propertyvalue(name, state):
             "brightness": 0.0
         }
 
+    elif name == "Count":
+        property_value = {
+            "@type": "Count",
+            "value": int(state.state)
+        }
+        
     elif name == "colorTemperatureInKelvin":
         property_value = 0
 
@@ -585,7 +617,7 @@ async def discovery_handler(hass, request):
         for interface in get_interfaces(state.domain, state.attributes):
             capabilities.append(get_capability(alexa_response, interface, state.attributes))
 
-        if len(capabilities) > 0:
+        if state.state != "unavailable" and len(capabilities) > 0:
             alexa_response.add_payload_endpoint(
                 endpoint_id=entity_id,
                 friendly_name=state.attributes.get(ATTR_FRIENDLY_NAME),
@@ -627,6 +659,13 @@ def get_service(interface, name, payload, state):
 
     elif interface == "Alexa.LockController":
         service = name.lower()
+        data = {"entity_id": state.entity_id}
+
+    elif interface == "Alexa.SceneController":
+        if name == "Activate":
+            service = "turn_on"
+        elif name == "Deactivate":
+            service = "turn_off"
         data = {"entity_id": state.entity_id}
 
     elif interface == "Alexa.PowerController":

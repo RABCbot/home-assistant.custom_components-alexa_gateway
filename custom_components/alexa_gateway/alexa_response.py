@@ -115,6 +115,10 @@ class AlexaResponse:
         if instance:
             capability["instance"] = instance
 
+        supportsDeactivation = kwargs.get("supports_deactivation", None)
+        if supportsDeactivation:
+            capability["supportsDeactivation"] = supportsDeactivation
+
         proactively_reported = kwargs.get("proactively_reported", None)
         supported = kwargs.get("supported", None)
         if proactively_reported and not supported:
@@ -140,6 +144,14 @@ class AlexaResponse:
         if configuration_modes:
             capability["configuration"] = {}
             capability["configuration"]["supportedModes"] = configuration_modes
+
+        configuration_measurement = kwargs.get("configuration_measurement", None)
+        configuration_replenishment = kwargs.get("configuration_replenishment", None)
+        if configuration_measurement:
+            capability["configuration"] = {}
+            capability["configuration"]["measurement"] = configuration_measurement
+            if configuration_replenishment:
+                capability["configuration"]["replenishment"] = configuration_replenishment
 
         configuration_ordered = kwargs.get("configuration_ordered", None)
         if configuration_ordered is not None:
